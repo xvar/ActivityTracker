@@ -3,23 +3,27 @@ package com.app.nl.graphql.testactivitytracker
 import android.app.Activity
 import java.util.LinkedList
 
-class ActivityTrackerImpl : ActivityTracker {
+class ActivityTrackerImpl constructor() : ActivityTracker {
 
-    //private val createdActivityList = LinkedList<Activity>()
-    private val resumedActivityList = LinkedList<Activity>()
+    private val resumedActivityList = LinkedList<ActivityRecord>()
     private val actionList = LinkedList<(currentActivity: Activity) -> Unit>()
 
-    override var runningActivityCount: Int = 0
-    private set
+    override val runningActivityCount: Int
+        get() = resumedActivityList.size
+
     override var createdActivityCount: Int = 0
-    private set
+        private set
 
     var wasStoppedActivityChangingConfiguration: Boolean = false
-    private set
+        private set
 
     override val hasForegroundActivity: Boolean
         get() = runningActivityCount > 0
 
+    /**
+     * If submitted in [onResume, onPause) action will run in current activity,
+     * Otherwise it will be executed in next activity
+     */
     override fun post(action: (currentActivity: Activity) -> Unit) {
         actionList.add(action)
         val current = currentActivity
@@ -40,8 +44,8 @@ class ActivityTrackerImpl : ActivityTracker {
         }
     }
 
-    private val lastResumedActivity : Activity?
-        get() = resumedActivityList.peekFirst()
+    private val lastResumedActivity: Activity?
+        get() = resumedActivityList.maxByOrNull { it.lastResumedTime }?.activity
 
     override val currentActivity: Activity?
         get() = lastResumedActivity
@@ -49,20 +53,18 @@ class ActivityTrackerImpl : ActivityTracker {
 
     fun activityCreated(activity: Activity) {
         createdActivityCount++
-        //createdActivityList.addFirst(activity)
     }
 
     fun activityStarted(activity: Activity) {
     }
 
     fun activityResumed(activity: Activity) {
-        runningActivityCount++
-        resumedActivityList.addFirst(activity)
+        resumedActivityList.removeAll { it.activity == activity }
+        resumedActivityList.addFirst(ActivityRecord(activity, System.currentTimeMillis()))
     }
 
     fun activityPaused(activity: Activity) {
-        runningActivityCount--
-        resumedActivityList.remove(activity)
+        resumedActivityList.removeAll { it.activity == activity }
     }
 
     fun activityStopped(activity: Activity) {
@@ -71,7 +73,10 @@ class ActivityTrackerImpl : ActivityTracker {
 
     fun activityDestroyed(activity: Activity) {
         createdActivityCount--
-        //createdActivityList.remove(activity)
     }
 
+    private data class ActivityRecord(
+        val activity: Activity,
+        val lastResumedTime: Long
+    )
 }

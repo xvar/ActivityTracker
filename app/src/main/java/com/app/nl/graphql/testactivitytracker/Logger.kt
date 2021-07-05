@@ -11,6 +11,7 @@ class Logger(
 
     private fun logMethod(methodName: String, activity: Activity) {
         Log.d("TrackerTest", "created in ${createdInActivity::class.java.simpleName} : $methodName, running in $activity ")
+        Log.d("TrackerTest", "created = ${activityTracker.createdActivityCount}, resumed = ${activityTracker.runningActivityCount} ")
     }
 
     fun log(methodName: String) {
